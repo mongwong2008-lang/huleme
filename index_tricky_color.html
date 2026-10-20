@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>胡了么 · 傳統麻將牌版</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef8ef;color:#103f34;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif}
+.app{max-width:720px;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 14px 35px;min-height:100vh}
+.top{display:flex;justify-content:space-between;align-items:center;margin-top:40px}.brand{font-size:22px;font-weight:800}.count{background:#fff;border:1px solid #cadbd2;border-radius:30px;padding:9px 14px}
+h1{font-size:38px;line-height:1.08;margin:65px 0 12px}.sub{font-size:17px;opacity:.62}
+.board{margin-top:28px;background:#d8efe0;border-radius:24px;padding:18px 8px 20px}
+.hand{display:grid;grid-template-columns:repeat(7,1fr);gap:9px}
+.tile{height:82px;border:0;border-radius:9px;background:linear-gradient(#fff,#f5f0e6);box-shadow:0 4px 7px #0002;padding:4px;font-size:12px;font-weight:700;color:#222;position:relative}
+.tile .n{font-size:23px;display:block;line-height:28px}.tile .s{font-size:14px;display:block}.face{font-family:"Apple Symbols","Noto Sans Symbols 2","Segoe UI Symbol",sans-serif;font-size:48px;line-height:1;display:block}
+.tile.man .face{color:#b8322a}.tile.pin .face{color:#16855a}.tile.sou .face{color:#147044}.tile.honor .face{color:#b8322a}
+.level{font-size:13px;font-weight:800;background:#f2c94c;color:#574600;border-radius:999px;padding:5px 9px;margin-left:7px}
+.reason{margin-top:12px;padding:12px;background:#fff8dc;border-radius:12px;line-height:1.5}.tile:active{transform:translateY(-7px)}
+.tile.best{outline:4px solid #1a9a69;transform:translateY(-5px)}.tile.wrong{outline:4px solid #d75a51}
+.result{display:none;background:white;border-radius:20px;padding:17px;margin-top:16px}.result.show{display:block}.headline{font-size:23px;font-weight:800}.good{color:#087650}.bad{color:#bd4942}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:13px 0}.m{background:#f3f8f4;padding:10px;border-radius:12px}.m b{display:block;font-size:21px}
+.eff{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.mini{background:#faf7ef;border:1px solid #ddd5c7;border-radius:7px;padding:6px}
+.actions{display:flex;gap:10px;margin-top:18px}.btn{flex:1;border:0;border-radius:99px;padding:14px;font-size:17px;font-weight:750}.next{background:#08714f;color:#fff}.swap{background:#fff;color:#08714f;border:1px solid #cbdad3}
+.note{font-size:13px;opacity:.55;margin-top:13px}.foot{text-align:center;opacity:.45;margin-top:30px;font-size:12px}
+</style></head>
+<body><main class="app">
+<div class="top"><div class="brand">🀄 胡了么</div><div class="count">第 <span id="q">1</span> 題 <span class="level" id="level">TRICKY</span></div></div>
+<h1>這手牌<br>你會打哪張？</h1><div class="sub">進階題 · 有重疊搭子、對子與假孤張陷阱</div>
+<div class="board"><div id="hand" class="hand"></div><div class="note">傳統萬／筒／索／東南西北中發白 · 第一版先不計花牌、番數、防守</div></div>
+<div id="result" class="result"></div>
+<div class="actions"><button class="btn swap" id="swap">換一題</button><button class="btn next" id="next">下一題 →</button></div>
+<div class="foot">廣東麻將牌效率練習 · Tricky Mode</div>
+</main>
+<script>
+const names=[
+"1萬","2萬","3萬","4萬","5萬","6萬","7萬","8萬","9萬",
+"1筒","2筒","3筒","4筒","5筒","6筒","7筒","8筒","9筒",
+"1索","2索","3索","4索","5索","6索","7索","8索","9索",
+"東","南","西","北","中","發","白"];
+const faces=[
+"🀇","🀈","🀉","🀊","🀋","🀌","🀍","🀎","🀏",
+"🀙","🀚","🀛","🀜","🀝","🀞","🀟","🀠","🀡",
+"🀐","🀑","🀒","🀓","🀔","🀕","🀖","🀗","🀘",
+"🀀","🀁","🀂","🀃","🀄","🀅","🀆"];
+let hand=[],q=0,answered=false;
+
+const trickyHands=[
+[0,1,2,2,3,4,5,6,7,10,11,12,27,27],
+[1,2,3,4,4,5,6,7,8,11,12,13,22,22],
+[0,1,2,3,4,5,6,6,7,8,14,15,16,30],
+[1,2,3,3,4,5,6,7,8,18,19,20,31,31],
+[2,3,4,5,6,7,8,9,10,11,19,20,21,21],
+[0,1,2,4,5,6,7,8,9,10,11,12,25,25],
+[1,2,3,4,5,6,7,8,13,14,15,23,24,25],
+[2,3,4,4,5,6,7,10,11,12,20,21,22,29],
+[0,1,2,3,4,5,7,8,9,10,11,12,26,26],
+[1,2,3,5,6,7,9,10,11,13,14,15,32,32]
+];
+function suitClass(t){return t<9?'man':t<18?'pin':t<27?'sou':'honor'}
+function transformHand(base){
+ const perm=[0,1,2].sort(()=>Math.random()-.5);
+ return base.map(t=>{
+   if(t>=27)return t;
+   const suit=Math.floor(t/9), rank=t%9;
+   return perm[suit]*9+rank;
+ }).sort((a,b)=>a-b);
+}
+
+
+function suitOf(t){return t<9?"萬":t<18?"筒":t<27?"索":""}
+function rankOf(t){return t<27?(t%9)+1:""}
+function tileHTML(t){
+ return '<span class="face" aria-label="'+names[t]+'">'+faces[t]+'</span>';
+}
+// Fast standard-hand shanten using compact recursive decomposition.
+function standardShanten(c){
+ let min=8;
+ function go(pos,m,p,t){
+   while(pos<34 && c[pos]===0)pos++;
+   if(pos>=34){let tt=Math.min(t,4-m);min=Math.min(min,8-m*2-tt-p);return}
+   if(m>4||t>4)return;
+   // triplet
+   if(c[pos]>=3){c[pos]-=3;go(pos,m+1,p,t);c[pos]+=3}
+   // sequence
+   if(pos<27 && pos%9<=6 && c[pos+1]>0 && c[pos+2]>0){
+     c[pos]--;c[pos+1]--;c[pos+2]--;go(pos,m+1,p,t);c[pos]++;c[pos+1]++;c[pos+2]++;
+   }
+   // pair as head
+   if(p===0 && c[pos]>=2){c[pos]-=2;go(pos,m,1,t);c[pos]+=2}
+   // taatsu pair
+   if(c[pos]>=2){c[pos]-=2;go(pos,m,p,t+1);c[pos]+=2}
+   // adjacent taatsu
+   if(pos<27 && pos%9<=7 && c[pos+1]>0){c[pos]--;c[pos+1]--;go(pos,m,p,t+1);c[pos]++;c[pos+1]++}
+   // gap taatsu
+   if(pos<27 && pos%9<=6 && c[pos+2]>0){c[pos]--;c[pos+2]--;go(pos,m,p,t+1);c[pos]++;c[pos+2]++}
+   // skip this tile
+   c[pos]--;go(pos,m,p,t);c[pos]++;
+ }
+ go(0,0,0,0);return min;
+}
+function shanten(c){
+ let s=standardShanten(c.slice());
+ let pairs=0,unique=0;
+ for(const x of c){if(x>0)unique++;if(x>=2)pairs++}
+ return Math.min(s,6-pairs+Math.max(0,7-unique));
+}
+function countsWithout(idx){
+ let c=Array(34).fill(0);
+ hand.forEach((t,i)=>{if(i!==idx)c[t]++});return c;
+}
+function analysis(idx){
+ let c=countsWithout(idx),s=shanten(c),eff=[],total=0;
+ for(let t=0;t<34;t++){
+   if(c[t]>=4)continue;
+   c[t]++;let ns=shanten(c);c[t]--;
+   if(ns<s){let left=4-c[t];eff.push([t,left]);total+=left}
+ }
+ return {s,total,eff};
+}
+function deal(){
+ const base=trickyHands[(q-1)%trickyHands.length];
+ return transformHand(base);
+}
+function render(){
+ const el=document.getElementById("hand");el.innerHTML="";
+ hand.forEach((t,i)=>{
+   const b=document.createElement("button");b.className="tile "+suitClass(t);b.innerHTML=tileHTML(t);
+   b.addEventListener("click",()=>choose(i));el.appendChild(b);
+ });
+}
+function newQ(){
+ q++;answered=false;hand=deal();document.getElementById("q").textContent=q;
+ document.getElementById("result").className="result";render();
+}
+function choose(i){
+ if(answered)return;
+ const A=hand.map((_,k)=>analysis(k));
+ let bestS=Math.min(...A.map(x=>x.s));
+ let bestTotal=Math.max(...A.filter(x=>x.s===bestS).map(x=>x.total));
+ let best=A.map((x,k)=>({x,k})).filter(o=>o.x.s===bestS&&o.x.total===bestTotal).map(o=>o.k);
+ let mine=A[i],ok=best.includes(i);answered=true;
+ document.querySelectorAll(".tile").forEach((e,k)=>{if(best.includes(k))e.classList.add("best");if(k===i&&!ok)e.classList.add("wrong")});
+ const uniqueBest=[...new Set(best.map(k=>faces[hand[k]]))].join(" ");
+ const eff=mine.eff.map(x=>'<span class="mini" title="'+names[x[0]]+'" style="font-size:25px">'+faces[x[0]]+' ×'+x[1]+'</span>').join("");
+ const r=document.getElementById("result");r.className="result show";
+ r.innerHTML='<div class="headline '+(ok?'good':'bad')+'">'+(ok?'✓ 這是目前最佳選擇':'這張不是最高牌效率')+'</div>'+
+ '<div class="metrics"><div class="m">打後狀態<b>'+(mine.s===0?'聽牌':mine.s+' 向聽')+'</b></div><div class="m">有效進張<b>'+mine.total+' 張</b></div></div>'+
+ (!ok?'<div>較佳棄牌：<b>'+uniqueBest+'</b>；這題故意放了重疊搭子／對子陷阱，不能只看孤張。</div>':'<div>答對了。這題的陷阱是牌型看起來有幾個都能拆，但最佳答案要比較整體有效進張。</div>')+
+ '<div class="reason"><b>為什麼 tricky：</b> 不只比較「哪張最孤」。程式會先比較打掉後的向聽數，再比較所有能讓手牌前進的剩餘牌數；因此拆錯一個看似普通的搭子，可能會同時失去兩邊進張。</div>'+
+ '<div style="margin-top:12px"><b>你的有效牌：</b><div class="eff">'+(eff||'暫無直接改善向聽的牌')+'</div></div>';
+}
+document.getElementById("swap").addEventListener("click",newQ);
+document.getElementById("next").addEventListener("click",newQ);
+newQ();
+</script></body></html>
