@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>胡了么 · 傳統麻將牌版</title>
+<title>胡了么 · 試玩版 2</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#eef8ef;color:#103f34;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif}
 .app{max-width:720px;margin:auto;padding:calc(22px + env(safe-area-inset-top)) 14px 35px;min-height:100vh}
@@ -13,7 +13,7 @@ h1{font-size:38px;line-height:1.08;margin:65px 0 12px}.sub{font-size:17px;opacit
 .board{margin-top:28px;background:#d8efe0;border-radius:24px;padding:18px 8px 20px}
 .hand{display:grid;grid-template-columns:repeat(7,1fr);gap:9px}
 .tile{height:82px;border:0;border-radius:9px;background:linear-gradient(#fff,#f5f0e6);box-shadow:0 4px 7px #0002;padding:4px;font-size:12px;font-weight:700;color:#222;position:relative}
-.tile .n{font-size:23px;display:block;line-height:28px}.tile .s{font-size:14px;display:block}.face{font-family:"Apple Symbols","Noto Sans Symbols 2","Segoe UI Symbol",sans-serif;font-size:48px;line-height:1;display:block}.tile:active{transform:translateY(-7px)}
+.tile .n{font-size:23px;display:block;line-height:28px}.tile .s{font-size:14px;display:block}.tile:active{transform:translateY(-7px)}
 .tile.best{outline:4px solid #1a9a69;transform:translateY(-5px)}.tile.wrong{outline:4px solid #d75a51}
 .result{display:none;background:white;border-radius:20px;padding:17px;margin-top:16px}.result.show{display:block}.headline{font-size:23px;font-weight:800}.good{color:#087650}.bad{color:#bd4942}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:13px 0}.m{background:#f3f8f4;padding:10px;border-radius:12px}.m b{display:block;font-size:21px}
@@ -24,7 +24,7 @@ h1{font-size:38px;line-height:1.08;margin:65px 0 12px}.sub{font-size:17px;opacit
 <body><main class="app">
 <div class="top"><div class="brand">🀄 胡了么</div><div class="count">第 <span id="q">1</span> 題</div></div>
 <h1>這手牌<br>你會打哪張？</h1><div class="sub">直接點牌出牌 · 看哪個選擇有效進張最多</div>
-<div class="board"><div id="hand" class="hand"></div><div class="note">傳統萬／筒／索／東南西北中發白 · 第一版先不計花牌、番數、防守</div></div>
+<div class="board"><div id="hand" class="hand"></div><div class="note">萬／筒／索／東南西北中發白 · 第一版先不計花牌、番數、防守</div></div>
 <div id="result" class="result"></div>
 <div class="actions"><button class="btn swap" id="swap">換一題</button><button class="btn next" id="next">下一題 →</button></div>
 <div class="foot">廣東麻將牌效率練習 · Prototype v2</div>
@@ -35,17 +35,13 @@ const names=[
 "1筒","2筒","3筒","4筒","5筒","6筒","7筒","8筒","9筒",
 "1索","2索","3索","4索","5索","6索","7索","8索","9索",
 "東","南","西","北","中","發","白"];
-const faces=[
-"🀇","🀈","🀉","🀊","🀋","🀌","🀍","🀎","🀏",
-"🀙","🀚","🀛","🀜","🀝","🀞","🀟","🀠","🀡",
-"🀐","🀑","🀒","🀓","🀔","🀕","🀖","🀗","🀘",
-"🀀","🀁","🀂","🀃","🀄","🀅","🀆"];
 let hand=[],q=0,answered=false;
 
 function suitOf(t){return t<9?"萬":t<18?"筒":t<27?"索":""}
 function rankOf(t){return t<27?(t%9)+1:""}
 function tileHTML(t){
- return '<span class="face" aria-label="'+names[t]+'">'+faces[t]+'</span>';
+ if(t<27)return '<span class="n">'+rankOf(t)+'</span><span class="s">'+suitOf(t)+'</span>';
+ return '<span class="n">'+names[t]+'</span><span class="s">字</span>';
 }
 // Fast standard-hand shanten using compact recursive decomposition.
 function standardShanten(c){
@@ -116,8 +112,8 @@ function choose(i){
  let best=A.map((x,k)=>({x,k})).filter(o=>o.x.s===bestS&&o.x.total===bestTotal).map(o=>o.k);
  let mine=A[i],ok=best.includes(i);answered=true;
  document.querySelectorAll(".tile").forEach((e,k)=>{if(best.includes(k))e.classList.add("best");if(k===i&&!ok)e.classList.add("wrong")});
- const uniqueBest=[...new Set(best.map(k=>faces[hand[k]]))].join(" ");
- const eff=mine.eff.map(x=>'<span class="mini" title="'+names[x[0]]+'" style="font-size:25px">'+faces[x[0]]+' ×'+x[1]+'</span>').join("");
+ const uniqueBest=[...new Set(best.map(k=>names[hand[k]]))].join("／");
+ const eff=mine.eff.map(x=>'<span class="mini">'+names[x[0]]+' ×'+x[1]+'</span>').join("");
  const r=document.getElementById("result");r.className="result show";
  r.innerHTML='<div class="headline '+(ok?'good':'bad')+'">'+(ok?'✓ 這是目前最佳選擇':'這張不是最高牌效率')+'</div>'+
  '<div class="metrics"><div class="m">打後狀態<b>'+(mine.s===0?'聽牌':mine.s+' 向聽')+'</b></div><div class="m">有效進張<b>'+mine.total+' 張</b></div></div>'+
