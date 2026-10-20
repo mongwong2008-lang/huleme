@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>胡了么 · v6</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef8ef;color:#103f34;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif}
+.app{max-width:720px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 14px 38px;min-height:100vh}
+.top{display:flex;justify-content:space-between;align-items:center;margin-top:22px}.brand{font-size:22px;font-weight:850}.q{background:white;border:1px solid #cbded3;border-radius:999px;padding:8px 13px}
+h1{font-size:35px;line-height:1.08;margin:42px 0 9px}.sub{opacity:.62}.levels{display:flex;gap:7px;margin:20px 0 12px}.lv{border:1px solid #bdd4c8;background:#fff;color:#286653;border-radius:999px;padding:9px 12px;font-weight:750}.lv.on{background:#116d50;color:white;border-color:#116d50}
+.panel{background:#d9efe1;border-radius:23px;padding:14px 8px 17px}.label{font-size:13px;font-weight:800;opacity:.58;margin:2px 4px 10px}.hand{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.tile{height:86px;border:1px solid #ded9ca;border-radius:9px;background:linear-gradient(145deg,#fff 0%,#fffdf5 65%,#e7e1d2 100%);box-shadow:0 4px 0 #c8c0ad,0 7px 8px #0002;padding:0;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.tile:active{transform:translateY(-6px)}.tile.best{outline:4px solid #14966a;transform:translateY(-4px)}.tile.wrong{outline:4px solid #d4554c}
+.glyph{width:92%;height:92%;display:flex;align-items:center;justify-content:center}.glyph svg{width:100%;height:100%;display:block}
+.river{display:flex;gap:5px;flex-wrap:wrap;background:#fff9;border-radius:13px;padding:9px;margin-bottom:12px}.river .rt{width:35px;height:47px;background:linear-gradient(145deg,#fff,#eee9dd);border:1px solid #e1dccf;border-radius:5px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 3px #0002;overflow:hidden}.river .glyph{width:94%;height:94%}.river .glyph svg{width:100%;height:100%}
+.result{display:none;background:#fff;border-radius:19px;padding:16px;margin-top:14px}.result.show{display:block}.headline{font-size:22px;font-weight:850}.good{color:#087650}.bad{color:#bd4942}.compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.box{background:#f3f8f4;border-radius:12px;padding:10px}.box b{font-size:20px;display:block}.explain{background:#fff6d7;border-radius:12px;padding:12px;line-height:1.45;margin-top:10px}.lost{font-size:21px;letter-spacing:2px}.actions{display:flex;gap:9px;margin-top:15px}.btn{flex:1;border:0;border-radius:999px;padding:14px;font-size:16px;font-weight:800}.next{background:#08714f;color:#fff}.swap{background:white;color:#08714f;border:1px solid #cbdad3}.foot{text-align:center;opacity:.4;font-size:12px;margin-top:25px}
+</style></head><body><main class="app">
+<div class="top"><div class="brand">🀄 胡了么</div><div class="q">第 <span id="q">1</span> 題</div></div>
+<h1>這手牌<br>你會打哪張？</h1><div class="sub">不只找孤張：比較向聽、牌河與實際進張</div>
+<div class="levels"><button class="lv" data-lv="normal">普通</button><button class="lv on" data-lv="hard">困難</button><button class="lv" data-lv="devil">魔鬼 😈</button></div>
+<div class="panel"><div id="riverWrap"><div class="label">牌河 · 已見牌會從有效進張扣除</div><div class="river" id="river"></div></div><div class="label">你的手牌</div><div class="hand" id="hand"></div></div>
+<div class="result" id="result"></div><div class="actions"><button class="btn swap" id="swap">換一題</button><button class="btn next" id="next">下一題 →</button></div><div class="foot">牌效率訓練 v6 · traditional color mahjong tiles</div>
+</main><script>
+const names=["1萬","2萬","3萬","4萬","5萬","6萬","7萬","8萬","9萬","1筒","2筒","3筒","4筒","5筒","6筒","7筒","8筒","9筒","1索","2索","3索","4索","5索","6索","7索","8索","9索","東","南","西","北","中","發","白"];
+// Unicode Mahjong: characters 1-9, circles 1-9, bamboos 1-9, winds, dragons.
+let q=0,level="hard",hand=[],river=[],answered=false;
+const normalHands=[[0,1,2,4,5,6,9,10,11,18,19,20,27,31],[1,2,3,5,6,7,10,11,12,20,21,22,29,29]];
+const hardHands=[[0,1,2,2,3,4,5,6,7,10,11,12,27,27],[1,2,3,4,4,5,6,7,8,11,12,13,22,22],[0,1,2,3,4,5,6,6,7,8,14,15,16,30],[1,2,3,3,4,5,6,7,8,18,19,20,31,31],[2,3,4,5,6,7,8,9,10,11,19,20,21,21]];
+const devilHands=[[0,1,2,3,4,5,5,6,7,10,11,12,22,22],[1,2,3,4,5,6,7,8,10,11,12,20,21,22],[0,1,2,3,4,5,7,8,9,10,11,12,25,25],[2,3,4,4,5,6,7,10,11,12,20,21,22,29]];
+const devilRivers=[[3,3,8,8,13,13,22,27,31],[0,4,4,9,12,17,19,23,28,32],[6,6,11,11,16,20,25,30,33],[1,5,9,14,14,18,23,23,27,32]];
+function face(t){
+ const R="#c92d2d",G="#16805a",B="#176db2",K="#202a28";
+ const txt=(x,y,v,c,fs=31)=>`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" fill="${c}" font-size="${fs}" font-weight="800" font-family="Songti TC,STSong,Noto Serif CJK TC,serif">${v}</text>`;
+ const ring=(x,y,c,rr=8)=>`<circle cx="${x}" cy="${y}" r="${rr}" fill="none" stroke="${c}" stroke-width="3"/><circle cx="${x}" cy="${y}" r="${rr-4}" fill="${c}" opacity=".18"/>`;
+ const bamboo=(x,y,c)=>`<g stroke="${c}" stroke-width="4" stroke-linecap="round"><path d="M${x} ${y-9}L${x} ${y+9}"/><path d="M${x-4} ${y-4}L${x+4} ${y-8}"/><path d="M${x-4} ${y+5}L${x+4} ${y+1}"/></g>`;
+ let body="";
+ if(t<9){
+   const nums=["一","二","三","四","伍","六","七","八","九"];
+   body=txt(30,29,nums[t],B,29)+txt(30,60,"萬",R,29);
+ }else if(t<18){
+   let n=t-8, pts={
+    1:[[30,44]],2:[[21,29],[39,59]],3:[[18,25],[30,44],[42,63]],4:[[19,27],[41,27],[19,59],[41,59]],
+    5:[[18,25],[42,25],[30,44],[18,63],[42,63]],6:[[18,23],[42,23],[18,44],[42,44],[18,65],[42,65]],
+    7:[[18,20],[42,20],[30,36],[18,51],[42,51],[18,68],[42,68]],8:[[18,18],[42,18],[18,35],[42,35],[18,54],[42,54],[18,71],[42,71]],
+    9:[[17,19],[30,19],[43,19],[17,44],[30,44],[43,44],[17,69],[30,69],[43,69]]
+   }[n];
+   body=pts.map((p,i)=>ring(p[0],p[1],[R,G,B][i%3], n>=8?5.8:7)).join("");
+ }else if(t<27){
+   let n=t-17;
+   if(n===1){
+     body=`<g><path d="M30 12 C19 22 20 35 29 41 C17 46 18 64 31 73 C43 62 43 48 34 41 C45 31 42 18 30 12Z" fill="${G}"/><circle cx="27" cy="27" r="5" fill="${R}"/><circle cx="34" cy="34" r="4" fill="${B}"/><path d="M29 42 L20 67 M32 43 L41 67" stroke="${B}" stroke-width="3"/></g>`;
+   }else{
+     let pts={2:[[22,30],[38,57]],3:[[30,19],[20,56],[40,56]],4:[[20,28],[40,28],[20,59],[40,59]],5:[[20,23],[40,23],[30,44],[20,66],[40,66]],6:[[20,21],[40,21],[20,44],[40,44],[20,67],[40,67]],7:[[20,17],[40,17],[30,35],[20,53],[40,53],[20,70],[40,70]],8:[[20,17],[40,17],[20,35],[40,35],[20,55],[40,55],[20,72],[40,72]],9:[[18,17],[30,17],[42,17],[18,44],[30,44],[42,44],[18,70],[30,70],[42,70]]}[n];
+     body=pts.map((p,i)=>bamboo(p[0],p[1],[G,R,B][i%3])).join("");
+   }
+ }else{
+   let i=t-27, z=["東","南","西","北","中","發","白"][i];
+   if(i===6) body=`<rect x="13" y="17" width="34" height="54" rx="2" fill="none" stroke="${B}" stroke-width="4"/><rect x="18" y="22" width="24" height="44" fill="none" stroke="${B}" stroke-width="1.5"/>`;
+   else body=txt(30,44,z,i===4?R:i===5?G:K,38);
+ }
+ return `<span class="glyph"><svg viewBox="0 0 60 88" xmlns="http://www.w3.org/2000/svg">${body}</svg></span>`;
+}
+function standardShanten(c){let min=8;function go(pos,m,p,t){while(pos<34&&c[pos]===0)pos++;if(pos>=34){let tt=Math.min(t,4-m);min=Math.min(min,8-m*2-tt-p);return}if(m>4||t>4)return;if(c[pos]>=3){c[pos]-=3;go(pos,m+1,p,t);c[pos]+=3}if(pos<27&&pos%9<=6&&c[pos+1]>0&&c[pos+2]>0){c[pos]--;c[pos+1]--;c[pos+2]--;go(pos,m+1,p,t);c[pos]++;c[pos+1]++;c[pos+2]++}if(p===0&&c[pos]>=2){c[pos]-=2;go(pos,m,1,t);c[pos]+=2}if(c[pos]>=2){c[pos]-=2;go(pos,m,p,t+1);c[pos]+=2}if(pos<27&&pos%9<=7&&c[pos+1]>0){c[pos]--;c[pos+1]--;go(pos,m,p,t+1);c[pos]++;c[pos+1]++}if(pos<27&&pos%9<=6&&c[pos+2]>0){c[pos]--;c[pos+2]--;go(pos,m,p,t+1);c[pos]++;c[pos+2]++}c[pos]--;go(pos,m,p,t);c[pos]++}go(0,0,0,0);return min}
+function shanten(c){let s=standardShanten(c.slice()),pairs=0,unique=0;for(const x of c){if(x>0)unique++;if(x>=2)pairs++}return Math.min(s,6-pairs+Math.max(0,7-unique))}
+function countsWithout(idx){let c=Array(34).fill(0);hand.forEach((t,i)=>{if(i!==idx)c[t]++});return c}
+function seenCount(t){return hand.filter(x=>x===t).length+river.filter(x=>x===t).length}
+function analysis(idx){let c=countsWithout(idx),s=shanten(c),eff=[],total=0;for(let t=0;t<34;t++){if(c[t]>=4)continue;c[t]++;let ns=shanten(c);c[t]--;if(ns<s){let left=Math.max(0,4-seenCount(t));if(left){eff.push([t,left]);total+=left}}}return{s,total,eff}}
+function pick(){let bank=level==="normal"?normalHands:level==="hard"?hardHands:devilHands;hand=bank[(q-1)%bank.length].slice().sort((a,b)=>a-b);if(level==="normal")river=[];else if(level==="hard")river=[(q*3)%34,(q*5+7)%34,(q*7+11)%34,(q*2+19)%34].filter(t=>hand.filter(x=>x===t).length<4);else river=devilRivers[(q-1)%devilRivers.length].slice()}
+function render(){let el=document.getElementById("hand");el.innerHTML="";hand.forEach((t,i)=>{let b=document.createElement("button");b.className="tile";b.innerHTML=face(t);b.onclick=()=>choose(i);el.appendChild(b)});document.getElementById("riverWrap").style.display=level==="normal"?"none":"block";document.getElementById("river").innerHTML=river.map(t=>'<div class="rt">'+face(t)+'</div>').join("")}
+function newQ(){q++;answered=false;pick();document.getElementById("q").textContent=q;document.getElementById("result").className="result";render()}
+function choose(i){if(answered)return;let A=hand.map((_,k)=>analysis(k)),bestS=Math.min(...A.map(x=>x.s)),bestTotal=Math.max(...A.filter(x=>x.s===bestS).map(x=>x.total)),best=A.map((x,k)=>({x,k})).filter(o=>o.x.s===bestS&&o.x.total===bestTotal).map(o=>o.k),mine=A[i],ok=best.includes(i);answered=true;document.querySelectorAll(".tile").forEach((e,k)=>{if(best.includes(k))e.classList.add("best");if(k===i&&!ok)e.classList.add("wrong")});let bestA=A[best[0]],bestNames=[...new Set(best.map(k=>names[hand[k]]))].join("／"),mineSet=new Set(mine.eff.map(x=>x[0])),bestSet=new Set(bestA.eff.map(x=>x[0])),lost=[...bestSet].filter(x=>!mineSet.has(x)),r=document.getElementById("result");r.className="result show";r.innerHTML='<div class="headline '+(ok?'good':'bad')+'">'+(ok?'✓ 答對了':'✕ 有更好的打法')+'</div><div class="compare"><div class="box">你的選擇<b>'+names[hand[i]]+'</b>'+mine.s+' 向聽 · '+mine.total+'張</div><div class="box">最佳選擇<b>'+bestNames+'</b>'+bestS+' 向聽 · '+bestTotal+'張</div></div><div><b>實際有效進張：</b> '+mine.eff.map(x=>names[x[0]]+'×'+x[1]).join("、")+'</div>'+(lost.length?'<div class="explain"><b>陷阱在這裡：</b>你的打法會失去這些進張：<div class="lost">'+lost.map(t=>names[t]).join(" · ")+'</div>牌河中的已見牌已經扣掉，所以不能只看理論牌型。</div>':'<div class="explain"><b>關鍵：</b>保留重疊搭子，同時維持最低向聽與最多「還活著」的進張。</div>')}
+document.querySelectorAll(".lv").forEach(b=>b.onclick=()=>{level=b.dataset.lv;document.querySelectorAll(".lv").forEach(x=>x.classList.toggle("on",x===b));q=0;newQ()});document.getElementById("swap").onclick=newQ;document.getElementById("next").onclick=newQ;newQ();
+</script></body></html>
